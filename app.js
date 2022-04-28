@@ -2,6 +2,7 @@ import express, { json } from 'express';
 import cors from 'cors';
 import Joi from 'joi';  
 import { MongoClient } from 'mongodb';
+import dayjs from 'dayjs';
 
 const app = express();
 app.use(cors());
@@ -25,10 +26,21 @@ app.post("/participants", async (req, res) => {
                 name: value,
                 lastStatus: Date.now()
             });
+
+            const horario = dayjs().locale('pt-br').format('hh:mm:ss');
+            await database.collection('messages').insertOne({
+                from: value,
+                to: 'Todos',
+                text: 'entra na sala...',
+                type: 'status',
+                time: horario
+            });
+            
+            res.sendStatus(201);
         } else{
             res.sendStatus(409);
         }
-        res.sendStatus(201);
+
         mongoClient.close();
     }catch(e){
         res.sendStatus(422);
