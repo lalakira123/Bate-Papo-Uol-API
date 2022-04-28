@@ -94,5 +94,16 @@ app.post("/messages", async (req, res) => {
     }
 })
 
+app.get("/messages", async ( req, res ) => {
+    try{
+        await mongoClient.connect();
+        database = mongoClient.db("test");
+
+        const mensagens = await database.collection('messages').find().toArray();
+        res.send(mensagens);
+    }catch(e){
+        res.send(e);
+    }
+});
 
 app.listen(5000);
