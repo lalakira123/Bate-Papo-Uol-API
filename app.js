@@ -63,6 +63,36 @@ app.get("/participants", async (req, res) => {
 })
 
 //Messages
+app.post("/messages", async (req, res) => {
+    const { to, text, type } = req.body;
+    const { user } = req.headers;
+    const schema = Joi.object({
+        to: Joi.string().trim().required(),
+        text: Joi.string().trim().required(),
+        type: Joi.string().valid('message', 'private_message').required(),
+        from: Joi.string().valid(user)
+    })
+
+    try{
+        await mongoClient.connect();
+        database = mongoClient.db("test");
+
+        const value = await schema.validateAsync({ to, text, type, from: user });
+        const horario = dayjs().locale('pt-br').format('HH:mm:ss');
+        await database.collection('messages').insertOne(
+            {
+                ...value,
+                time: horario
+            }
+        )
+        
+        res.sendStatus(201);
+        mongoClient.close();
+    }catch(e){
+        res.sendStatus(422);
+        mongoClient.close();
+    }
+})
 
 
 app.listen(5000);
