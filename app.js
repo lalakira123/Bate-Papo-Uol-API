@@ -11,6 +11,7 @@ app.use(json());
 let database;
 const mongoClient = new MongoClient("mongodb://localhost:27017");
 
+//Participants
 app.post("/participants", async (req, res) => {
     const { name } = req.body;
     const schema = Joi.string().trim().required();
@@ -27,7 +28,7 @@ app.post("/participants", async (req, res) => {
                 lastStatus: Date.now()
             });
 
-            const horario = dayjs().locale('pt-br').format('hh:mm:ss');
+            const horario = dayjs().locale('pt-br').format('HH:mm:ss');
             await database.collection('messages').insertOne({
                 from: value,
                 to: 'Todos',
@@ -35,7 +36,7 @@ app.post("/participants", async (req, res) => {
                 type: 'status',
                 time: horario
             });
-            
+
             res.sendStatus(201);
         } else{
             res.sendStatus(409);
@@ -60,5 +61,8 @@ app.get("/participants", async (req, res) => {
         res.send(e);
     }
 })
+
+//Messages
+
 
 app.listen(5000);
