@@ -77,7 +77,7 @@ app.post("/messages", async (req, res) => {
         await mongoClient.connect();
         database = mongoClient.db("test");
 
-        const value = await schema.validateAsync({ to, text, type, from: user });
+        const value = await schema.validateAsync({ from: user, to, text, type });
         const horario = dayjs().locale('pt-br').format('HH:mm:ss');
         await database.collection('messages').insertOne(
             {
