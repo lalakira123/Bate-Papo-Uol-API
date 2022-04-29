@@ -4,6 +4,7 @@ import Joi from 'joi';
 import { MongoClient } from 'mongodb';
 import dayjs from 'dayjs';
 import dotenv from 'dotenv';
+import { stripHtml } from 'string-strip-html';
 
 const app = express();
 app.use(cors());
@@ -18,14 +19,15 @@ const db = process.env.BANCO_MONGO;
 //Participants
 app.post("/participants", async (req, res) => {
     const { name } = req.body;
+    const nomeSanitizado = stripHtml(name).result;
     const schema = Joi.string().trim().required();
 
     try{
         await mongoClient.connect();
         database = mongoClient.db(db);
 
-        const value = await schema.validateAsync(name);
-        const existeParticipante = await database.collection('participants').findOne({name:value});
+        const value = await schema.validateAsync(nomeSanitizado);
+        const existeParticipante = await database.collection('participants').findOne({ name:value });
         if(!existeParticipante){
             await database.collection('participants').insertOne({
                 name: value,
@@ -70,33 +72,36 @@ app.get("/participants", async (req, res) => {
 app.post("/messages", async (req, res) => {
     const { to, text, type } = req.body;
     const { user } = req.headers;
+    const userSanitizado = stripHtml(user).result;
+    const textSanitizado = stripHtml(text).result;
     const schema = Joi.object({
         to: Joi.string().trim().required(),
         text: Joi.string().trim().required(),
         type: Joi.string().valid('message', 'private_message').required(),
-        from: Joi.string().valid(user)
+        from: Joi.string().valid(userSanitizado)
     })
 
     try{
         await mongoClient.connect();
         database = mongoClient.db(db);
 
-        const usuario = await database.collection('participants').findOne({ name: user });
+        const usuario = await database.collection('participants').findOne({ name: userSanitizado });
+        console.log(usuario);
         if(!usuario){
             res.sendStatus(422);
             mongoClient.close();
             return;
         }
 
-        const value = await schema.validateAsync({ from: user, to, text, type });
+        const value = await schema.validateAsync({ from: userSanitizado, to, text: textSanitizado, type });
         const horario = dayjs().locale('pt-br').format('HH:mm:ss');
-        await database.collection('messages').insertOne(
+        const aaa = await database.collection('messages').insertOne(
             {
                 ...value,
                 time: horario
             }
         )
-        
+
         res.sendStatus(201);
         mongoClient.close();
     }catch(e){
@@ -108,14 +113,15 @@ app.post("/messages", async (req, res) => {
 app.get("/messages", async ( req, res ) => {
     const limit = parseInt(req.query.limit);
     const { user } = req.headers;
-    
+    const userSanitizado = stripHtml(user).result;
+
     try{
         await mongoClient.connect();
         database = mongoClient.db(db);
 
         const mensagens = await database.collection('messages').find({$or:[
-            {to: user},
-            {from: user},
+            {to: userSanitizado},
+            {from: userSanitizado},
             {to: 'Todos'},
             {type: 'message'}
         ]}).toArray();
@@ -142,11 +148,12 @@ app.get("/messages", async ( req, res ) => {
 //Status
 app.post('/status', async (req, res) => {
     const { user } = req.headers;
+    const userSanitizado = stripHtml(user).result;
     try{
         await mongoClient.connect();
         database = mongoClient.db(db);
 
-        const existeUsuario = await database.collection('participants').findOne({ name: user });
+        const existeUsuario = await database.collection('participants').findOne({ name: userSanitizado });
         if(!existeUsuario){
             res.sendStatus(404);
             mongoClient.close();
@@ -154,7 +161,7 @@ app.post('/status', async (req, res) => {
         }
 
         await database.collection('participants').updateOne({ 
-            name: user
+            name: userSanitizado
         }, { $set: { lastStatus: Date.now() }});
 
         res.sendStatus(200);
@@ -191,6 +198,7 @@ async function removerUsuario(){
         mongoClient.close();
     }catch(e){
         console.log(e);
+        mongoClient.close();
     }   
 }
 
