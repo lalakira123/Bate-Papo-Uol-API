@@ -77,6 +77,12 @@ app.post("/messages", async (req, res) => {
         await mongoClient.connect();
         database = mongoClient.db("test");
 
+        const usuario = await database.collection('participants').findOne({ name: user });
+        if(!usuario){
+            res.sendStatus(422);
+            return;
+        }
+
         const value = await schema.validateAsync({ from: user, to, text, type });
         const horario = dayjs().locale('pt-br').format('HH:mm:ss');
         await database.collection('messages').insertOne(
@@ -95,11 +101,30 @@ app.post("/messages", async (req, res) => {
 })
 
 app.get("/messages", async ( req, res ) => {
+    const limit = parseInt(req.query.limit);
+    const { user } = req.headers;
+    
     try{
         await mongoClient.connect();
         database = mongoClient.db("test");
 
-        const mensagens = await database.collection('messages').find().toArray();
+        const mensagens = await database.collection('messages').find({$or:[
+            {to: user},
+            {from: user},
+            {to: 'Todos'},
+            {type: 'message'}
+        ]}).toArray();
+
+        if(limit){
+            mensagens.reverse();
+            const mensagensLimitadas = mensagens.filter((mensagem, indice) => {
+                return indice < limit;
+            })
+            mensagensLimitadas.reverse();
+            res.send(mensagensLimitadas);
+            return;
+        }
+
         res.send(mensagens);
     }catch(e){
         res.send(e);
