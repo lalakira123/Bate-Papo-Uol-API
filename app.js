@@ -161,4 +161,39 @@ app.post('/status', async (req, res) => {
     }
 })
 
+//Remoção Automática
+async function removerUsuario(){
+    try{
+        await mongoClient.connect();
+        database = mongoClient.db('test');
+
+        const usuariosOciosos = await database.collection('participants').find({ lastStatus: 
+            { $lt: Date.now()-10000 }
+        }).toArray();
+
+        const horario = dayjs().locale('pt-br').format('HH:mm:ss');
+        usuariosOciosos.forEach((usuario) => {
+            database.collection('messages').insertOne( {
+                from: usuario.name,
+                to: 'Todos',
+                text: 'sai da sala...',
+                type: 'status',
+                time: horario
+            } );       
+        });
+
+        await database.collection('participants').deleteMany( { lastStatus: { $lt: Date.now()-10000 } } );
+
+        mongoClient.close();
+    }catch(e){
+        console.log(e);
+    }   
+}
+
+function automatizarRemocao() {
+    setInterval( removerUsuario , 15000);
+}
+
+automatizarRemocao();
+
 app.listen(5000);
