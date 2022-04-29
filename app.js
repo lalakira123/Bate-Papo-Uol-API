@@ -73,7 +73,6 @@ app.post("/messages", async (req, res) => {
     const { to, text, type } = req.body;
     const { user } = req.headers;
     const userSanitizado = stripHtml(user).result;
-    const textSanitizado = stripHtml(text).result;
     const schema = Joi.object({
         to: Joi.string().trim().required(),
         text: Joi.string().trim().required(),
@@ -86,16 +85,20 @@ app.post("/messages", async (req, res) => {
         database = mongoClient.db(db);
 
         const usuario = await database.collection('participants').findOne({ name: userSanitizado });
-        console.log(usuario);
         if(!usuario){
             res.sendStatus(422);
             mongoClient.close();
             return;
         }
 
-        const value = await schema.validateAsync({ from: userSanitizado, to, text: textSanitizado, type });
+        const value = await schema.validateAsync({ 
+            from: userSanitizado, 
+            to, 
+            text: stripHtml(text).result, 
+            type 
+        });
         const horario = dayjs().locale('pt-br').format('HH:mm:ss');
-        const aaa = await database.collection('messages').insertOne(
+        await database.collection('messages').insertOne(
             {
                 ...value,
                 time: horario
@@ -183,14 +186,18 @@ async function removerUsuario(){
         }).toArray();
 
         const horario = dayjs().locale('pt-br').format('HH:mm:ss');
-        usuariosOciosos.forEach((usuario) => {
-            database.collection('messages').insertOne( {
-                from: usuario.name,
-                to: 'Todos',
-                text: 'sai da sala...',
-                type: 'status',
-                time: horario
-            } );       
+        usuariosOciosos.forEach( async (usuario) => {
+            try{
+                await database.collection('messages').insertOne( {
+                    from: usuario.name,
+                    to: 'Todos',
+                    text: 'sai da sala...',
+                    type: 'status',
+                    time: horario
+                } );  
+            }catch(e){
+                console.log(e);
+            }     
         });
 
         await database.collection('participants').deleteMany( { lastStatus: { $lt: Date.now()-10000 } } );
