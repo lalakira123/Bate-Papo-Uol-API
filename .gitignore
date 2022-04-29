@@ -1,2 +1,6 @@
+#dependencies
 /node_modules
 /front-bate-papo-uol-main
+
+#file
+.env

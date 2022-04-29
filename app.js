@@ -3,13 +3,17 @@ import cors from 'cors';
 import Joi from 'joi';  
 import { MongoClient } from 'mongodb';
 import dayjs from 'dayjs';
+import dotenv from 'dotenv';
 
 const app = express();
 app.use(cors());
 app.use(json());
+dotenv.config();
 
+//DB
 let database;
-const mongoClient = new MongoClient("mongodb://localhost:27017");
+const mongoClient = new MongoClient(process.env.MONGO_URI); //process.env.MONGO.
+const db = process.env.BANCO_MONGO;
 
 //Participants
 app.post("/participants", async (req, res) => {
@@ -18,7 +22,7 @@ app.post("/participants", async (req, res) => {
 
     try{
         await mongoClient.connect();
-        database = mongoClient.db("test");
+        database = mongoClient.db(db);
 
         const value = await schema.validateAsync(name);
         const existeParticipante = await database.collection('participants').findOne({name:value});
@@ -52,7 +56,7 @@ app.post("/participants", async (req, res) => {
 app.get("/participants", async (req, res) => {
     try{
         await mongoClient.connect();
-        database = mongoClient.db("test");
+        database = mongoClient.db(db);
 
         const participantes = await database.collection('participants').find({}).toArray();
         res.send(participantes);
@@ -75,7 +79,7 @@ app.post("/messages", async (req, res) => {
 
     try{
         await mongoClient.connect();
-        database = mongoClient.db("test");
+        database = mongoClient.db(db);
 
         const usuario = await database.collection('participants').findOne({ name: user });
         if(!usuario){
@@ -107,7 +111,7 @@ app.get("/messages", async ( req, res ) => {
     
     try{
         await mongoClient.connect();
-        database = mongoClient.db("test");
+        database = mongoClient.db(db);
 
         const mensagens = await database.collection('messages').find({$or:[
             {to: user},
@@ -140,7 +144,7 @@ app.post('/status', async (req, res) => {
     const { user } = req.headers;
     try{
         await mongoClient.connect();
-        database = mongoClient.db('test');
+        database = mongoClient.db(db);
 
         const existeUsuario = await database.collection('participants').findOne({ name: user });
         if(!existeUsuario){
@@ -165,7 +169,7 @@ app.post('/status', async (req, res) => {
 async function removerUsuario(){
     try{
         await mongoClient.connect();
-        database = mongoClient.db('test');
+        database = mongoClient.db(db);
 
         const usuariosOciosos = await database.collection('participants').find({ lastStatus: 
             { $lt: Date.now()-10000 }
@@ -196,4 +200,4 @@ function automatizarRemocao() {
 
 automatizarRemocao();
 
-app.listen(5000);
+app.listen(process.env.PORTA);
