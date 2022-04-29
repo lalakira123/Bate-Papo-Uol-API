@@ -80,6 +80,7 @@ app.post("/messages", async (req, res) => {
         const usuario = await database.collection('participants').findOne({ name: user });
         if(!usuario){
             res.sendStatus(422);
+            mongoClient.close();
             return;
         }
 
@@ -122,13 +123,42 @@ app.get("/messages", async ( req, res ) => {
             })
             mensagensLimitadas.reverse();
             res.send(mensagensLimitadas);
+            mongoClient.close();
             return;
         }
 
         res.send(mensagens);
+        mongoClient.close();
     }catch(e){
         res.send(e);
+        mongoClient.close();
     }
 });
+
+//Status
+app.post('/status', async (req, res) => {
+    const { user } = req.headers;
+    try{
+        await mongoClient.connect();
+        database = mongoClient.db('test');
+
+        const existeUsuario = await database.collection('participants').findOne({ name: user });
+        if(!existeUsuario){
+            res.sendStatus(404);
+            mongoClient.close();
+            return;
+        }
+
+        await database.collection('participants').updateOne({ 
+            name: user
+        }, { $set: { lastStatus: Date.now() }});
+
+        res.sendStatus(200);
+        mongoClient.close();
+    }catch(e){
+        res.send(e);
+        mongoClient.close();
+    }
+})
 
 app.listen(5000);
