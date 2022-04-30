@@ -1,7 +1,7 @@
 import express, { json } from 'express';
 import cors from 'cors';
 import Joi from 'joi';  
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import dayjs from 'dayjs';
 import dotenv from 'dotenv';
 import { stripHtml } from 'string-strip-html';
@@ -157,7 +157,7 @@ app.delete('/messages/:id', async (req, res) => {
         await mongoClient.connect();
         database = mongoClient.db(db);
 
-        const existeMensagem = await database.collection('messages').findOne({_id: new ObjectId(id)});
+        const existeMensagem = await database.collection('messages').findOne({ _id: new ObjectId(id)});
         if(!existeMensagem){
             res.sendStatus(404);
             mongoClient.close();
