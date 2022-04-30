@@ -13,7 +13,7 @@ dotenv.config();
 
 //DB
 let database;
-const mongoClient = new MongoClient(process.env.MONGO_URI); //process.env.MONGO.
+const mongoClient = new MongoClient(process.env.MONGO_URI);
 const db = process.env.BANCO_MONGO;
 
 //Participants
@@ -144,6 +144,88 @@ app.get("/messages", async ( req, res ) => {
         mongoClient.close();
     }catch(e){
         res.send(e);
+        mongoClient.close();
+    }
+});
+
+app.delete('/messages/:id', async (req, res) => {
+    const { id } = req.params;
+    const { user } = req.headers;
+    const userSanitizado = stripHtml(user).result;
+
+    try{
+        await mongoClient.connect();
+        database = mongoClient.db(db);
+
+        const existeMensagem = await database.collection('messages').findOne({_id: new ObjectId(id)});
+        if(!existeMensagem){
+            res.sendStatus(404);
+            mongoClient.close();
+            return;
+        } else if(existeMensagem.from !== userSanitizado){
+            res.sendStatus(401);
+            mongoClient.close();
+            return;
+        }
+
+        await database.collection('messages').deleteOne( { _id: existeMensagem._id } )
+
+        mongoClient.close();
+    }catch(e){
+        console.log(e);
+        mongoClient.close();
+    }
+});
+
+app.put('/messages/:id', async (req, res) => {
+    const { id } = req.params;
+    const { user } = req.headers;
+    const { to, text, type } = req.body;
+    const userSanitizado = stripHtml(user).result;
+    const schema = Joi.object({
+        to: Joi.string().trim().required(),
+        text: Joi.string().trim().required(),
+        type: Joi.valid('message', 'private_message'),
+        from: Joi.valid( userSanitizado )
+    })
+
+    try{
+        await mongoClient.connect();
+        database = mongoClient.db(db);
+
+        const value = await schema.validateAsync({
+            to,
+            text: stripHtml(text).result,
+            type,
+            from: userSanitizado
+        })
+
+        const existeUsuario = await database.collection('participants').findOne({ name: userSanitizado });
+        if(!existeUsuario){
+            res.sendStatus(422);
+            mongoClient.close();
+            return;
+        }
+
+        const existeMensagem = await database.collection('messages').findOne({ _id: new ObjectId( id ) });
+        if(!existeMensagem){
+            res.sendStatus(404);
+            mongoClient.close();
+            return;
+        } else if( existeMensagem.from !== userSanitizado ){
+            res.sendStatus(401);
+            mongoClient.close();
+            return;
+        }
+
+        await database.collection('messages').updateOne({
+            _id: existeMensagem._id
+        }, { $set: value });
+
+        res.sendStatus(200);
+        mongoClient.close();
+    }catch(e){
+        res.sendStatus(422);
         mongoClient.close();
     }
 });
