@@ -43,7 +43,7 @@ app.post("/participants", async (req, res) => {
                 time: horario
             });
 
-            res.sendStatus(201);
+            res.status(201).send(nomeSanitizado);
         } else{
             res.sendStatus(409);
         }
